@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#111417">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>仙人ラジオ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f6f5a'/%3E%3Ctext x='32' y='42' font-size='30' text-anchor='middle' fill='%23fff' font-family='sans-serif'%3E仙%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href='data:application/manifest+json,{"name":"仙人ラジオ","short_name":"仙人ラジオ","display":"standalone","background_color":"%23111417","theme_color":"%23111417","start_url":".","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%231f6f5a%27/%3E%3Ctext x=%2732%27 y=%2742%27 font-size=%2730%27 text-anchor=%27middle%27 fill=%27%23fff%27 font-family=%27sans-serif%27%3E仙%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
+<style>
+  :root{--bg:#111417;--panel:#1a1f24;--ink:#e8edf0;--sub:#8a97a0;--line:#2a3238;--green:#2f9c7f;--green-soft:#173a32;--amber:#d9a441}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Yu Gothic UI","Hiragino Sans",sans-serif;height:100%}
+  body{display:flex;flex-direction:column;min-height:100dvh;padding-bottom:env(safe-area-inset-bottom)}
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+  header h1{font-size:18px;margin:0;letter-spacing:.04em}
+  header .tag{font-size:11px;color:var(--sub)}
+  #playerWrap{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+  #player{position:absolute;inset:0;width:100%;height:100%}
+  .now{padding:12px 16px 4px}
+  .now .t{font-size:15px;font-weight:700;line-height:1.5;min-height:44px}
+  .now .m{font-size:12px;color:var(--sub);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap}
+  .bar{height:4px;background:var(--line);border-radius:2px;margin:10px 16px 0;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--green)}
+  .ctrl{display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:10px;padding:14px 16px 6px}
+  .ctrl button{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:14px;padding:16px 0;font-size:22px;font-weight:700}
+  .ctrl button.play{background:var(--green);border-color:var(--green);font-size:24px}
+  .ctrl button:active{opacity:.7}
+  .row{display:flex;gap:8px;padding:8px 16px;flex-wrap:wrap}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:8px 14px;font-size:13px}
+  .chip.on{background:var(--green-soft);border-color:var(--green);color:#bfe8da}
+  .chip.big{flex:1;text-align:center;padding:12px 10px;font-size:14px}
+  .sec{padding:8px 16px 0;font-size:12px;color:var(--sub);letter-spacing:.08em}
+  .list{flex:1;overflow:auto;padding:6px 8px 24px}
+  .item{display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px}
+  .item.cur{background:var(--green-soft)}
+  .item img{width:88px;height:50px;object-fit:cover;border-radius:6px;background:#000;flex:none}
+  .item .tt{font-size:13px;line-height:1.4;flex:1}
+  .item .st{font-size:11px;color:var(--sub);margin-top:2px}
+  .item.done .tt{color:var(--sub)}
+  .item .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex:none}
+  .item.done .dot{background:var(--line)}
+  #pocket{position:fixed;inset:0;background:#000;display:none;z-index:50;color:#333;align-items:center;justify-content:center;flex-direction:column;gap:12px;font-size:14px}
+  #pocket.on{display:flex}
+  #pocket .big{font-size:40px;color:#222}
+  .note{font-size:11.5px;color:var(--sub);padding:0 16px 8px;line-height:1.6}
+  .msg{padding:10px 16px;font-size:13px;color:#f0c674;display:none}
+  .msg.on{display:block}
+</style>
+</head>
+<body>
+<header>
+  <h1>仙人ラジオ</h1>
+  <span class="tag" id="stat">読み込み中…</span>
+</header>
+
+<div id="playerWrap"><div id="player"></div></div>
+<div class="msg" id="msg"></div>
+
+<div class="now">
+  <div class="t" id="title">—</div>
+  <div class="m"><span id="time">0:00 / 0:00</span><span id="rate">1.25×</span><span id="idx"></span></div>
+</div>
+<div class="bar"><i id="prog"></i></div>
+
+<div class="ctrl">
+  <button id="prev" aria-label="前へ">⏮</button>
+  <button id="play" class="play" aria-label="再生">▶</button>
+  <button id="next" aria-label="次へ">⏭</button>
+</div>
+
+<div class="row">
+  <button class="chip big" id="today">🎲 今日の1本（未視聴から）</button>
+  <button class="chip big" id="pocketBtn">🌑 ポケットモード</button>
+</div>
+<div class="row">
+  <span class="chip" id="spd" data-v="1.25">速度 1.25×</span>
+  <span class="chip" id="shuf">シャッフル</span>
+  <span class="chip" id="unw">未視聴を優先</span>
+  <span class="chip" id="resume">続きから</span>
+</div>
+<div class="note">動画の音声はYouTube公式プレイヤーで再生します。画面を消すと止まる仕様なので、通勤中は「ポケットモード」（画面を黒くして点灯を保つ）でどうぞ。イヤホンの再生／次へボタンにも対応。</div>
+
+<div class="sec">再生リスト（チャンネル全動画）</div>
+<div class="list" id="list"></div>
+
+<div id="pocket">
+  <div class="big">仙</div>
+  <div id="pTitle" style="max-width:80%;text-align:center;line-height:1.5"></div>
+  <div>タップで戻る ／ 音量ボタン・イヤホンで操作</div>
+</div>
+
+<script>
+const PLAYLIST = 'UURxPq02pjQS_ax60gcTSDHQ'; // AI仙人ch 全アップロード（UC→UU）
+const LS = k => { try { return JSON.parse(localStorage.getItem('sr_'+k)); } catch(e){ return null; } };
+const SS = (k,v) => { try { localStorage.setItem('sr_'+k, JSON.stringify(v)); } catch(e){} };
+const $ = id => document.getElementById(id);
+
+const state = {
+  rate: LS('rate') ?? 1.25,
+  shuffle: LS('shuffle') ?? false,
+  unwatched: LS('unwatched') ?? true,
+  resume: LS('resume') ?? true,
+  watched: LS('watched') ?? {},   // videoId -> true
+  titles: LS('titles') ?? {},     // videoId -> title
+  last: LS('last') ?? null,       // {id, t}
+};
+let player, ids = [], ready = false, wakeLock = null, ticker = null;
+
+// ---- YouTube IFrame API ----
+const tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
+window.onYouTubeIframeAPIReady = () => {
+  player = new YT.Player('player', {
+    playerVars: { listType:'playlist', list: PLAYLIST, playsinline:1, rel:0, modestbranding:1, controls:1 },
+    events: { onReady, onStateChange, onError }
+  });
+};
+function onReady(){
+  ready = true;
+  ids = player.getPlaylist() || [];
+  $('stat').textContent = ids.length + '本';
+  player.setPlaybackRate(state.rate);
+  player.setShuffle(state.shuffle);
+  player.setLoop(true);
+  renderChips(); renderList();
+  if (state.resume && state.last && ids.includes(state.last.id)) {
+    player.cueVideoById({videoId: state.last.id, startSeconds: state.last.t||0});
+    $('title').textContent = state.titles[state.last.id] || '前回の続き';
+  } else if (state.unwatched) {
+    const u = ids.find(v => !state.watched[v]); if (u) player.cueVideoById(u);
+  }
+  fetchTitles(ids.slice(0, 40));
+}
+function onStateChange(e){
+  const S = YT.PlayerState;
+  if (e.data === S.PLAYING){ $('play').textContent='⏸'; keepAwake(true); startTicker(); updateMeta(); player.setPlaybackRate(state.rate); }
+  else if (e.data === S.PAUSED){ $('play').textContent='▶'; stopTicker(); }
+  else if (e.data === S.ENDED){ markWatched(curId()); if (state.unwatched) playNextUnwatched(); }
+  if (e.data === S.PLAYING || e.data === S.CUED){ const d=player.getVideoData(); if (d && d.video_id && d.title){ state.titles[d.video_id]=d.title; SS('titles',state.titles);} renderNow(); renderList(); }
+}
+function onError(e){
+  const m = {2:'動画IDが不正です',5:'HTMLプレイヤーのエラー',100:'動画が見つかりません（削除済み）',101:'埋め込み不可の動画',150:'埋め込み不可の動画',153:'埋め込み元の制限（このページの開き方では再生できない動画）'}[e.data] || ('エラー '+e.data);
+  $('msg').textContent = m + ' → 次へ進みます'; $('msg').classList.add('on');
+  setTimeout(()=>{ $('msg').classList.remove('on'); player.nextVideo(); }, 1500);
+}
+function curId(){ const d = player && player.getVideoData(); return d ? d.video_id : null; }
+
+// ---- controls ----
+$('play').onclick = () => { if(!ready) return; const s = player.getPlayerState(); (s===1) ? player.pauseVideo() : player.playVideo(); };
+$('next').onclick = () => { if(!ready) return; markWatched(curId()); state.unwatched ? playNextUnwatched() : player.nextVideo(); };
+$('prev').onclick = () => { if(!ready) return; player.getCurrentTime() > 8 ? player.seekTo(0) : player.previousVideo(); };
+$('today').onclick = () => { if(!ready) return; const pool = ids.filter(v=>!state.watched[v]); const pick = (pool.length?pool:ids)[Math.floor(Math.random()*(pool.length||ids.length))]; player.loadVideoById(pick); };
+$('spd').onclick = () => { const seq=[1,1.25,1.5,1.75,2]; state.rate = seq[(seq.indexOf(state.rate)+1)%seq.length]; SS('rate',state.rate); if(ready) player.setPlaybackRate(state.rate); renderChips(); };
+$('shuf').onclick = () => { state.shuffle=!state.shuffle; SS('shuffle',state.shuffle); if(ready) player.setShuffle(state.shuffle); renderChips(); };
+$('unw').onclick = () => { state.unwatched=!state.unwatched; SS('unwatched',state.unwatched); renderChips(); };
+$('resume').onclick = () => { state.resume=!state.resume; SS('resume',state.resume); renderChips(); };
+$('pocketBtn').onclick = () => { $('pocket').classList.add('on'); $('pTitle').textContent = $('title').textContent; keepAwake(true); };
+$('pocket').onclick = () => $('pocket').classList.remove('on');
+
+function playNextUnwatched(){
+  const i = ids.indexOf(curId());
+  const order = state.shuffle ? ids.slice().sort(()=>Math.random()-.5) : ids.slice(i+1).concat(ids.slice(0,i+1));
+  const nxt = order.find(v => !state.watched[v] && v!==curId());
+  nxt ? player.loadVideoById(nxt) : player.nextVideo();
+}
+function markWatched(id){ if(!id) return; state.watched[id]=true; SS('watched',state.watched); renderList(); }
+
+// ---- progress / resume ----
+function startTicker(){ stopTicker(); ticker = setInterval(tick, 1000); }
+function stopTicker(){ if(ticker) clearInterval(ticker); ticker=null; }
+function tick(){
+  if(!ready) return;
+  const t = player.getCurrentTime()||0, d = player.getDuration()||0;
+  $('time').textContent = fmt(t)+' / '+fmt(d); $('prog').style.width = d ? (t/d*100)+'%' : '0';
+  const id = curId(); if (id && Math.floor(t)%5===0){ state.last={id,t}; SS('last',state.last); }
+  if (d && t/d > 0.9) markWatched(id);
+}
+const fmt = s => { s=Math.floor(s); const m=Math.floor(s/60), h=Math.floor(m/60); return h? `${h}:${String(m%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}` : `${m}:${String(s%60).padStart(2,'0')}`; };
+
+// ---- render ----
+function renderNow(){ const id=curId(); $('title').textContent = state.titles[id] || (id ? '再生中… '+id : '—'); $('idx').textContent = id ? `${ids.indexOf(id)+1} / ${ids.length}` : ''; if($('pocket').classList.contains('on')) $('pTitle').textContent=$('title').textContent; }
+function renderChips(){
+  $('spd').textContent = '速度 '+state.rate+'×'; $('rate').textContent = state.rate+'×';
+  $('shuf').classList.toggle('on', state.shuffle); $('unw').classList.toggle('on', state.unwatched); $('resume').classList.toggle('on', state.resume);
+}
+function renderList(){
+  const cur = curId(); const L = $('list'); L.innerHTML='';
+  ids.forEach((v,i)=>{
+    const el = document.createElement('div'); el.className='item'+(state.watched[v]?' done':'')+(v===cur?' cur':'');
+    el.innerHTML = `<img loading="lazy" src="https://img.youtube.com/vi/${v}/mqdefault.jpg" alt=""><div class="tt">${esc(state.titles[v]||('動画 '+(i+1)))}<div class="st">${state.watched[v]?'視聴済み':'未視聴'}</div></div><span class="dot"></span>`;
+    el.onclick = () => { player.loadVideoById(v); };
+    L.appendChild(el);
+  });
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---- titles (best effort via noembed; falls back to titles learned while playing) ----
+async function fetchTitles(list){
+  for (const v of list){
+    if (state.titles[v]) continue;
+    try { const r = await fetch('https://noembed.com/embed?url=https://www.youtube.com/watch?v='+v); const j = await r.json(); if (j.title){ state.titles[v]=j.title; } } catch(e){ break; }
+  }
+  SS('titles',state.titles); renderList(); renderNow();
+}
+
+// ---- media session (earphone / lock-screen buttons) & wake lock ----
+function updateMeta(){
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({ title: $('title').textContent, artist:'AI仙人ch', album:'仙人ラジオ', artwork:[{src:`https://img.youtube.com/vi/${curId()}/mqdefault.jpg`, sizes:'320x180', type:'image/jpeg'}] });
+  navigator.mediaSession.setActionHandler('play', ()=>player.playVideo());
+  navigator.mediaSession.setActionHandler('pause', ()=>player.pauseVideo());
+  navigator.mediaSession.setActionHandler('nexttrack', ()=>$('next').onclick());
+  navigator.mediaSession.setActionHandler('previoustrack', ()=>$('prev').onclick());
+}
+async function keepAwake(on){
+  try { if (on && 'wakeLock' in navigator && !wakeLock){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{ wakeLock=null; }); } } catch(e){}
+}
+document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible' && ready && player.getPlayerState()===1) keepAwake(true); });
+</script>
+</body>
+</html>
